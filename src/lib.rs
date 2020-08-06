@@ -100,7 +100,7 @@ macro_rules! lockstep_replace {
         // Position of a replacement reached (or: inside a replacement)
         // Coupled with a seek step
         lockstep_replace!(
-            [ $($result,)* $rep1 ],
+            [ $($result,)* $rep1 | $src1_replaced ],
             [ $($src,)* ],
             [],
             [ $($rep_rest,)* ],
@@ -134,7 +134,12 @@ macro_rules! lockstep_replace {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! reloc {
-    ( { $($attr:tt)* }  [ $( [ $($pos:expr),* ], [ $($rep:expr),* ] ),* ], $lblmap:ident, [ $($mcode:expr),* ], [/* empty relocation list */] ) => {
+    ( { $($attr:tt)* }
+      [ $( [ $($pos:expr),* ],
+           [ $($rep:expr),* ] ),* ],
+      $lblmap:ident,
+      [ $($mcode:expr),* ],
+      [/* empty relocation list */] ) => {
         lockstep_replace!([], [ $($mcode,)* ], $( [ $($pos,)* ], [ $($rep,)* ], )*)
     };
     ( { start: $start:expr }  [ $( [ $($pos:expr),* ], [ $($rep:expr),* ] ),* ], $lblmap:ident, [ $($mcode:expr),* ], [ { $lbl:ident as ABS16 @ [$($lockstepmcpos:expr),*] } $(,$reloc:tt)* ] ) => {
@@ -147,15 +152,14 @@ macro_rules! reloc {
             [ $($lockstepmcpos),* ], [ ($lblmap!($lbl) + $start) as u8, (($lblmap!($lbl) + $start) >> 8) as u8 ] ],
             $lblmap, [ $($mcode),* ], [ $($reloc),* ])
     };
-    ( { $($attr:tt)* }  [ $( [ $($pos:expr),* ], [ $($rep:expr),* ] ),* ], $lblmap:ident, [ $($mcode:expr),* ], [ { $lbl:ident as PCREL @ [$($lockstepmcpos:expr),*] } $(,$reloc:tt)* ] ) => {
-        // Replace 1 Byte with the PC relative address
-        // PC is the program counter *after* the relocated offset (the length of the
-        // `$lockstepmcpos` array + 1), so we need to subtract 1 additional byte.
+    ( { $($attr:tt)* }  [ $( [ $($pos:expr),* ], [ $($rep:expr),* ] ),* ], $lblmap:ident, [ $($mcode:expr),* ], [ { $lbl:ident as PCREL @ [$($lockstepmcpos:expr,)*] } $(,$reloc:tt)* ] ) => {
+        // OR in the PC-relative address to the opcode
         reloc!(
             { $($attr)* }
             [ $( [ $($pos),* ], [ $($rep),* ] ,)*
-            [ $($lockstepmcpos),* ], [ ((( $lblmap!($lbl) as i32 - codelen!($($lockstepmcpos),*) as i32 - 1 ) & 0x3FF ) << 23) ] ],
-            $lblmap, [ $($mcode),* ], [ $($reloc),* ])
+            [ $($lockstepmcpos),* ], [ ((( $lblmap!($lbl) as i32 - (codelen!($($lockstepmcpos),*)) as i32 - 1 ) & 0x3FF ) << 23) ] ],
+            $lblmap,
+            [ $($mcode),* ], [ $($reloc),* ])
     };
 }
 
@@ -207,18 +211,26 @@ macro_rules! asm_ {
     };
 
     // BRZ
-    // ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
-    //     brz $label:ident , % $ra:tt
-    // $($rest:tt)* ) => {
-    //     asm_!({ $($attr)* } [ $($mcode,)* 0x0 ],
-    //         [ $($lbl => $lblval),* ], [ $($reloc,)* { $label as PCREL @ [ $($mcode,)* ] } ], $($rest)*)
-    // };
+    ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
+        brz $label:ident , %$ra:tt
+    $($rest:tt)* ) => {
+        asm_!({ $($attr)* } [ $($mcode,)* 0 << 23 | 0 << 11 | $ra << 6 | 0x9 ],
+            [ $($lbl => $lblval),* ], [ $($reloc,)* { $label as PCREL @ [$($mcode,)*] } ], $($rest)*)
+    };
+
     ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
         brz $label:ident , #$ra:tt
     $($rest:tt)* ) => {
         asm_!({ $($attr)* } [ $($mcode,)* 0 << 23 | 1 << 11 | $ra << 6 | 0x9 ],
-            [ $($lbl => $lblval),* ], [ $($reloc,)* { $label as PCREL @ [$($mcode,)* 0 << 23 | 1 << 11 | $ra << 6 | 0x9] } ], $($rest)*)
+            [ $($lbl => $lblval),* ], [ $($reloc,)* { $label as PCREL @ [$($mcode,)*] } ], $($rest)*)
     };
+
+    // UDF
+    ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
+    udf
+$($rest:tt)* ) => {
+    asm_!({ $($attr)* } [ $($mcode,)* -0x7FFF_FFFF ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
+};
 
     // ==================================================================================
     // ==================================================================================
