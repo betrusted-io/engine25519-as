@@ -270,182 +270,78 @@ macro_rules! assemble_engine25519 {
     };
 }
 
-// /// Does anything work
-// #[test]
-// fn basic_syntax() {
-//     let mcode = assemble_engine25519!(
-//         start:
-//             add %0, %1, %2
-//             add %2, %3, #4
-//             add %5, #6, %7
-//             add %8, #9, #10
-//             brz start, #11
-//     );
-//     assert_eq!(
-//         mcode,
-//         [
-//             0 << 16 | 0 << 11 | 1 << 6 | 0 << 17 | 2 << 12 | 0x5,
-//             2 << 16 | 0 << 11 | 3 << 6 | 1 << 17 | 4 << 12 | 0x5,
-//             5 << 16 | 1 << 11 | 6 << 6 | 0 << 17 | 7 << 12 | 0x5,
-//             8 << 16 | 1 << 11 | 9 << 6 | 1 << 17 | 10 << 12 | 0x5,
-//             0x3FC << 23 | 0 << 11 | 11 << 6 | 0x9,
-//         ]
-//     );
-// }
-
-pub enum Operand {
-    Register(i32),
-    Constant(i32),
-}
-
-impl Operand {
-    pub fn from_i32_r(op: i32) -> Operand {
-        if (op >> 5) & 1 == 0 {
-            Operand::Register(op & (32 - 1))
-        } else {
-            Operand::Constant(op & (32 - 1))
-        }
-    }
-
-    pub fn from_i32_w(op: i32) -> Operand {
-        Operand::Register(op & (32 - 1))
-    }
-}
-#[cfg(feature = "std")]
-impl std::fmt::Display for Operand {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use Operand::*;
-        match self {
-            Register(r) => write!(f, "%{}", r),
-            Constant(c) => write!(f, "#{}", c),
-        }
-    }
-}
-
-pub enum Opcode {
-    PSA(Operand, Operand),
-    PSB(Operand, Operand),
-    MSK(Operand, Operand),
-    XOR,
-    NOT,
-    ADD(Operand, Operand, Operand),
-    SUB,
-    MUL,
-    TRD,
-    BRZ(Operand, i32),
-    UDF,
-}
-
-impl Opcode {
-    pub fn from_i32(op: i32) -> Opcode {
-        match op & (32 - 1) {
-            0 => Opcode::PSA(Operand::from_i32_r(op >> 6), Operand::from_i32_w(op >> 18)),
-            1 => Opcode::PSB(Operand::from_i32_r(op >> 6), Operand::from_i32_w(op >> 18)),
-            2 => Opcode::MSK(Operand::from_i32_r(op >> 6), Operand::from_i32_r(op >> 12)),
-            3 => Opcode::XOR,
-            4 => Opcode::NOT,
-            5 => Opcode::ADD(Operand::from_i32_r(op >> 6), Operand::from_i32_r(op >> 12), Operand::from_i32_w(op >> 18)),
-            6 => Opcode::SUB,
-            7 => Opcode::MUL,
-            8 => Opcode::TRD,
-            9 => Opcode::BRZ(Operand::from_i32_r(op >> 6), op >> 23),
-            _ => Opcode::UDF,
-        }
-    }
-}
-
-#[cfg(feature = "std")]
-impl std::fmt::Display for Opcode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use Opcode::*;
-        match self {
-            PSA(ra, rd) => write!(f, "PSA {}, {}", ra, rd),
-            PSB(ra, rd) => write!(f, "PSB {}, {}", ra, rd),
-            MSK(ra, rb) => write!(f, "MSK {}, {}", ra, rb),
-            XOR => write!(f, "XOR"),
-            NOT => write!(f, "NOT"),
-            ADD(ra, rb, rd) => write!(f, "ADD {}, {}, {}", rd, ra, rb),
-            SUB => write!(f, "SUB"),
-            MUL => write!(f, "MUL"),
-            TRD => write!(f, "TRD"),
-            BRZ(ra, rb) => write!(f, "BRZ {}, {}", rb, ra),
-            _ => write!(f, "invalid"),
-        }
-    }
-}
-
 #[cfg(test)]
-fn print_opcode(op: i32) {
-    println!(
-        "{:09b} {:05b} {:01b} {:05b} {:01b} {:05b} {:05b} | {}",
-        (op >> 23) & (512 - 1),
-        (op >> 18) & (32 - 1),
-        (op >> 17) & 1,
-        (op >> 12) & (32 - 1),
-        (op >> 11) & 1,
-        (op >> 6) & (32 - 1),
-        op & (32 - 1),
-        Opcode::from_i32(op),
-    );
+fn assert_assembly(gen: &[i32], reference: &[i32]) {
+    if gen != reference {
+        println!("Generated output:");
+        for op in gen {
+            disasm::print_opcode(*op);
+        }
+        println!("Reference output:");
+        for op in reference {
+            disasm::print_opcode(*op);
+        }
+        panic!("Outputs are not equal!");
+    }
 }
 
-/// Simple jump
+/// Does anything work
 #[test]
-fn simple_jmp() {
+fn basic_syntax() {
     let mcode = assemble_engine25519!(
-            start:
-                add %8, #9, #11
-            mid:
-                brz start, #11
-                add %8, #9, #12
-                add %8, #9, #10
+        start:
+            add %0, %1, %2
+            add %2, %3, #4
+            add %5, #6, %7
+            add %8, #9, #10
+            brz start, #11
     );
-    println!("Assembled output:");
-    for op in &mcode {
-        print_opcode(*op);
-    }
-
-    let target = [
-        8 << 18 | 1 << 11 | 9 << 6 | 1 << 17 | 11 << 12 | 0x5,
-        0x3FE << 23 | 0 << 11 | 11 << 6 | 0x9,
-        8 << 18 | 1 << 11 | 9 << 6 | 1 << 17 | 12 << 12 | 0x5,
-        8 << 18 | 1 << 11 | 9 << 6 | 1 << 17 | 10 << 12 | 0x5,
-    ];
-    println!("Target output:");
-    for op in &target {
-        print_opcode(*op);
-    }
-
-    assert_eq!(mcode, target);
+    #[allow(clippy::eq_op)]
+    #[allow(clippy::identity_op)]
+    assert_assembly(
+        &mcode,
+        &[
+            0 << 18 | 0 << 11 | 1 << 6 | 0 << 17 | 2 << 12 | 0x5,
+            2 << 18 | 0 << 11 | 3 << 6 | 1 << 17 | 4 << 12 | 0x5,
+            5 << 18 | 1 << 11 | 6 << 6 | 0 << 17 | 7 << 12 | 0x5,
+            8 << 18 | 1 << 11 | 9 << 6 | 1 << 17 | 10 << 12 | 0x5,
+            0x3FB << 23 | 1 << 11 | 11 << 6 | 0x9,
+        ],
+    );
 }
 
-/*
 /// Test simple label relocation
 #[test]
 fn simple_jmp() {
     let mcode = assemble_engine25519!(
-        start: brz start, r0
-    );
-    assert_eq!(mcode, [ 0x4C, 0x00, 0x00 ]);
-}
-
-/// Has to work without any relocations (label references)
-#[test]
-fn no_reloc() {
-    let mcode = assemble6502!(
         start:
-            lda #0xfb
+            brz start, #0
     );
-    assert_eq!(mcode, [ 0xA9, 0xFB ]);
+    assert_assembly(&mcode,&[-1 << 23 | 1 << 11 | 0x9]);
 }
 
-/// Has to work without any labels
+/// More complex label relocation
 #[test]
-fn no_label() {
-    let mcode = assemble6502!(
-        lda #0xfb
-        lda #0xab
+fn complex_jmp() {
+    let mcode = assemble_engine25519!(
+        start:
+            brz start, #0
+            brz mid, #0
+        mid:
+            brz start, #0
+            brz mid, #0
+            brz end, #0
+        end:
+            brz start, #0
     );
-    assert_eq!(mcode, [ 0xA9, 0xFB, 0xA9, 0xAB ]);
+
+    #[allow(clippy::identity_op)]
+    assert_assembly(&mcode,&[
+        -1 << 23 | 1 << 11 | 0x9,
+        0 << 23 | 1 << 11 | 0x9,
+        -3 << 23 | 1 << 11 | 0x9,
+        -2 << 23 | 1 << 11 | 0x9,
+        0 << 23 | 1 << 11 | 0x9,
+        -6 << 23 | 1 << 11 | 0x9,
+    ]);
 }
-*/
