@@ -39,6 +39,7 @@ pub enum Opcode {
     MUL,
     TRD,
     BRZ(Operand, i32),
+    END,
     UDF,
 }
 
@@ -59,6 +60,7 @@ impl Opcode {
             7 => Opcode::MUL,
             8 => Opcode::TRD,
             9 => Opcode::BRZ(Operand::from_i32_r(op >> 6), op >> 23),
+            10 => Opcode::END,
             _ => Opcode::UDF,
         }
     }
@@ -79,6 +81,7 @@ impl std::fmt::Display for Opcode {
             MUL => write!(f, "MUL"),
             TRD => write!(f, "TRD"),
             BRZ(ra, rb) => write!(f, "BRZ {}, {}", rb, ra),
+            END => write!(f, "END"),
             _ => write!(f, "invalid"),
         }
     }
