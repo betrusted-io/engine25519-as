@@ -1,5 +1,6 @@
-#![feature(trace_macros)]
-#![feature(log_syntax)]
+#![cfg_attr(feature="macro-debug",feature(trace_macros))]
+#![cfg_attr(feature="macro-debug",feature(log_syntax))]
+#[cfg(feature="macro-debug")]
 trace_macros!{true}
 
 /*
