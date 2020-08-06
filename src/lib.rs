@@ -3,6 +3,8 @@
 #[cfg(feature = "macro-debug")]
 trace_macros! {true}
 
+pub mod disasm;
+
 /*
    opcodes
 
