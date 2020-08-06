@@ -1,7 +1,7 @@
-#![cfg_attr(feature="macro-debug",feature(trace_macros))]
-#![cfg_attr(feature="macro-debug",feature(log_syntax))]
-#[cfg(feature="macro-debug")]
-trace_macros!{true}
+#![cfg_attr(feature = "macro-debug", feature(trace_macros))]
+#![cfg_attr(feature = "macro-debug", feature(log_syntax))]
+#[cfg(feature = "macro-debug")]
+trace_macros! {true}
 
 /*
    opcodes
@@ -27,6 +27,19 @@ trace_macros!{true}
    BRZ  0x2, r1      // if r1 is 0, mpc = mpc + 0x2
  loop:
    BRZ  loop, r2     // if r2 is 0, go to label "loop"
+
+
+    Basic opcode format:
+        0b_rrrrrrrrr_ddddd_y_bbbbb_x_aaaaa_oooooo
+    Where:
+        o: Opcode
+        a: Source register a
+        x: `1` if A is a constant rather than register
+        b: Source register b
+        y: `1` if B is a constant rather than a register
+        d: Destination register index
+        r: Reserved (set to 0)
+
 */
 
 /// A compile-time map from identifiers to arbitrary (heterogeneous) expressions
@@ -44,7 +57,6 @@ macro_rules! ident_map {
     };
 }
 
-
 /// Returns the number of comma-separated expressions passed to it
 #[macro_export]
 #[doc(hidden)]
@@ -53,9 +65,6 @@ macro_rules! codelen {
     ( $one:expr ) => { 1 };
     ( $first:expr, $($rest:expr),+ ) => { 1 + codelen!($($rest),+) };
 }
-
-
-
 
 /// Replace elements of "arrays" of expressions with sorted replacements by
 /// seeking along a "positional array" containing n expressions, then replacing
@@ -120,7 +129,6 @@ macro_rules! lockstep_replace {
 /// Relocation formats:
 /// { $label as ABS16 @ [$lockstepmcpos] }
 
-// $pos is
 #[macro_export]
 #[doc(hidden)]
 macro_rules! reloc {
@@ -149,12 +157,10 @@ macro_rules! reloc {
     };
 }
 
-
 // $attr is a label
 // $mcode is a list that contains the machine code opcodes
 // $ident is the identifier list
 // $reloc is the relocation list
-
 
 #[macro_export]
 #[doc(hidden)]
@@ -180,33 +186,33 @@ macro_rules! asm_ {
     ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
         add % $wd:tt, % $ra:tt , % $rb:tt
     $($rest:tt)* ) => {
-        asm_!({ $($attr)* } [ $($mcode,)* $wd << 16 | 0 << 11 | $ra << 6 | 0 << 17 | $rb << 12 | 0x5 ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
+        asm_!({ $($attr)* } [ $($mcode,)* $wd << 18 | 0 << 11 | $ra << 6 | 0 << 17 | $rb << 12 | 0x5 ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
     };
     ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
         add % $wd:tt, % $ra:tt , # $rb:tt
     $($rest:tt)* ) => {
-        asm_!({ $($attr)* } [ $($mcode,)* $wd << 16 | 0 << 11 | $ra << 6 | 1 << 17 | $rb << 12 | 0x5 ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
+        asm_!({ $($attr)* } [ $($mcode,)* $wd << 18 | 0 << 11 | $ra << 6 | 1 << 17 | $rb << 12 | 0x5 ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
     };
     ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
         add % $wd:tt, # $ra:tt , % $rb:tt
     $($rest:tt)* ) => {
-        asm_!({ $($attr)* } [ $($mcode,)* $wd << 16 | 1 << 11 | $ra << 6 | 0 << 17 | $rb << 12 | 0x5 ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
+        asm_!({ $($attr)* } [ $($mcode,)* $wd << 18 | 1 << 11 | $ra << 6 | 0 << 17 | $rb << 12 | 0x5 ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
     };
     ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
         add % $wd:tt, # $ra:tt , # $rb:tt
     $($rest:tt)* ) => {
-        asm_!({ $($attr)* } [ $($mcode,)* $wd << 16 | 1 << 11 | $ra << 6 | 1 << 17 | $rb << 12 | 0x5 ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
+        asm_!({ $($attr)* } [ $($mcode,)* $wd << 18 | 1 << 11 | $ra << 6 | 1 << 17 | $rb << 12 | 0x5 ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
     };
 
     // BRZ
+    // ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
+    //     brz $label:ident , % $ra:tt
+    // $($rest:tt)* ) => {
+    //     asm_!({ $($attr)* } [ $($mcode,)* 0x0 ],
+    //         [ $($lbl => $lblval),* ], [ $($reloc,)* { $label as PCREL @ [ $($mcode,)* ] } ], $($rest)*)
+    // };
     ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
-        brz $label:ident , % $ra:tt
-    $($rest:tt)* ) => {
-        asm_!({ $($attr)* } [ $($mcode,)* 0x0 ],
-            [ $($lbl => $lblval),* ], [ $($reloc,)* { $label as PCREL @ [ $($mcode,)* ] } ], $($rest)*)
-    };
-    ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
-        brz $label:ident , # $ra:tt
+        brz $label:ident , #$ra:tt
     $($rest:tt)* ) => {
         asm_!({ $($attr)* } [ $($mcode,)* 0 << 23 | 1 << 11 | $ra << 6 | 0x9 ],
             [ $($lbl => $lblval),* ], [ $($reloc,)* { $label as PCREL @ [$($mcode,)* 0 << 23 | 1 << 11 | $ra << 6 | 0x9] } ], $($rest)*)
@@ -249,41 +255,154 @@ macro_rules! assemble_engine25519 {
         })
     };
 }
-/*
-/// Does anything work
-#[test]
-fn basic_syntax() {
-    let mcode = assemble_engine25519!(
-        start:
-            add %0, %1, %2
-            add %2, %3, #4
-            add %5, #6, %7
-            add %8, #9, #10
-            brz start, %11
-    );
-    assert_eq!(mcode, [
-        0 << 16 | 0 << 11 | 1  << 6 | 0 << 17 | 2  << 12 | 0x5,
-        2 << 16 | 0 << 11 | 3  << 6 | 1 << 17 | 4  << 12 | 0x5,
-        5 << 16 | 1 << 11 | 6  << 6 | 0 << 17 | 7  << 12 | 0x5,
-        8 << 16 | 1 << 11 | 9  << 6 | 1 << 17 | 10 << 12 | 0x5,
-        0x3FC << 23 | 0 << 11 | 11 << 6 | 0x9,
-     ]);
+
+// /// Does anything work
+// #[test]
+// fn basic_syntax() {
+//     let mcode = assemble_engine25519!(
+//         start:
+//             add %0, %1, %2
+//             add %2, %3, #4
+//             add %5, #6, %7
+//             add %8, #9, #10
+//             brz start, #11
+//     );
+//     assert_eq!(
+//         mcode,
+//         [
+//             0 << 16 | 0 << 11 | 1 << 6 | 0 << 17 | 2 << 12 | 0x5,
+//             2 << 16 | 0 << 11 | 3 << 6 | 1 << 17 | 4 << 12 | 0x5,
+//             5 << 16 | 1 << 11 | 6 << 6 | 0 << 17 | 7 << 12 | 0x5,
+//             8 << 16 | 1 << 11 | 9 << 6 | 1 << 17 | 10 << 12 | 0x5,
+//             0x3FC << 23 | 0 << 11 | 11 << 6 | 0x9,
+//         ]
+//     );
+// }
+
+pub enum Operand {
+    Register(i32),
+    Constant(i32),
 }
-*/
+
+impl Operand {
+    pub fn from_i32_r(op: i32) -> Operand {
+        if (op >> 5) & 1 == 0 {
+            Operand::Register(op & (32 - 1))
+        } else {
+            Operand::Constant(op & (32 - 1))
+        }
+    }
+
+    pub fn from_i32_w(op: i32) -> Operand {
+        Operand::Register(op & (32 - 1))
+    }
+}
+#[cfg(feature = "std")]
+impl std::fmt::Display for Operand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Operand::*;
+        match self {
+            Register(r) => write!(f, "%{}", r),
+            Constant(c) => write!(f, "#{}", c),
+        }
+    }
+}
+
+pub enum Opcode {
+    PSA(Operand, Operand),
+    PSB(Operand, Operand),
+    MSK(Operand, Operand),
+    XOR,
+    NOT,
+    ADD(Operand, Operand, Operand),
+    SUB,
+    MUL,
+    TRD,
+    BRZ(Operand, i32),
+    UDF,
+}
+
+impl Opcode {
+    pub fn from_i32(op: i32) -> Opcode {
+        match op & (32 - 1) {
+            0 => Opcode::PSA(Operand::from_i32_r(op >> 6), Operand::from_i32_w(op >> 18)),
+            1 => Opcode::PSB(Operand::from_i32_r(op >> 6), Operand::from_i32_w(op >> 18)),
+            2 => Opcode::MSK(Operand::from_i32_r(op >> 6), Operand::from_i32_r(op >> 12)),
+            3 => Opcode::XOR,
+            4 => Opcode::NOT,
+            5 => Opcode::ADD(Operand::from_i32_r(op >> 6), Operand::from_i32_r(op >> 12), Operand::from_i32_w(op >> 18)),
+            6 => Opcode::SUB,
+            7 => Opcode::MUL,
+            8 => Opcode::TRD,
+            9 => Opcode::BRZ(Operand::from_i32_r(op >> 6), op >> 23),
+            _ => Opcode::UDF,
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::fmt::Display for Opcode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Opcode::*;
+        match self {
+            PSA(ra, rd) => write!(f, "PSA {}, {}", ra, rd),
+            PSB(ra, rd) => write!(f, "PSB {}, {}", ra, rd),
+            MSK(ra, rb) => write!(f, "MSK {}, {}", ra, rb),
+            XOR => write!(f, "XOR"),
+            NOT => write!(f, "NOT"),
+            ADD(ra, rb, rd) => write!(f, "ADD {}, {}, {}", rd, ra, rb),
+            SUB => write!(f, "SUB"),
+            MUL => write!(f, "MUL"),
+            TRD => write!(f, "TRD"),
+            BRZ(ra, rb) => write!(f, "BRZ {}, {}", rb, ra),
+            _ => write!(f, "invalid"),
+        }
+    }
+}
+
+#[cfg(test)]
+fn print_opcode(op: i32) {
+    println!(
+        "{:09b} {:05b} {:01b} {:05b} {:01b} {:05b} {:05b} | {}",
+        (op >> 23) & (512 - 1),
+        (op >> 18) & (32 - 1),
+        (op >> 17) & 1,
+        (op >> 12) & (32 - 1),
+        (op >> 11) & 1,
+        (op >> 6) & (32 - 1),
+        op & (32 - 1),
+        Opcode::from_i32(op),
+    );
+}
 
 /// Simple jump
 #[test]
 fn simple_jmp() {
     let mcode = assemble_engine25519!(
-        start:
-            add %0, %1, %2
-            brz start, %11
+            start:
+                add %8, #9, #11
+            mid:
+                brz start, #11
+                add %8, #9, #12
+                add %8, #9, #10
     );
-    print!("{}", mcode);
-    assert_eq!(mcode, [
-        0 << 16 | 0 << 11 | 1  << 6 | 0 << 17 | 2  << 12 | 0x5,
+    println!("Assembled output:");
+    for op in &mcode {
+        print_opcode(*op);
+    }
+
+    let target = [
+        8 << 18 | 1 << 11 | 9 << 6 | 1 << 17 | 11 << 12 | 0x5,
         0x3FE << 23 | 0 << 11 | 11 << 6 | 0x9,
-     ]);
+        8 << 18 | 1 << 11 | 9 << 6 | 1 << 17 | 12 << 12 | 0x5,
+        8 << 18 | 1 << 11 | 9 << 6 | 1 << 17 | 10 << 12 | 0x5,
+    ];
+    println!("Target output:");
+    for op in &target {
+        print_opcode(*op);
+    }
+
+    assert_eq!(mcode, target);
 }
 
 /*

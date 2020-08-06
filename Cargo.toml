@@ -8,7 +8,8 @@ edition = "2018"
 
 [features]
 macro-debug = []
-default = []
+std = []
+default = ["std"]
 
 [dependencies]
 
