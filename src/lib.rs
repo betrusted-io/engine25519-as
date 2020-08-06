@@ -3,6 +3,16 @@
 #[cfg(feature = "macro-debug")]
 trace_macros! {true}
 
+/*
+The macros in this library are derived from johnas-schievink's rustasm6502 package.
+https://github.com/jonas-schievink/rustasm6502
+
+The original license is MIT.
+
+Significant adaptations by Sean 'xobs' Cross.
+Small modifications by Andrew 'bunnie' Huang.
+*/
+
 pub mod disasm;
 
 /*
