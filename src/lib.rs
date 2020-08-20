@@ -387,6 +387,32 @@ macro_rules! asm_ {
         asm_!({ $($attr)* } [ $($mcode,)* 0xA ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
     };
 
+    // SHL
+    // shl %r0, %r1    // r0 <- r1 << 1
+    ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
+    shl % $wd:tt, % $ra:tt
+    $($rest:tt)* ) => {
+        asm_!({ $($attr)* } [ $($mcode,)* $wd << 18 | 0 << 11 | $ra << 6 | 0 << 17 | 0 << 12 | 0xB ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
+    };
+    ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
+    shl % $wd:tt, # $ra:tt
+    $($rest:tt)* ) => {
+        asm_!({ $($attr)* } [ $($mcode,)* $wd << 18 | 1 << 11 | $ra << 6 | 0 << 17 | 0 << 12 | 0xB ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
+    };
+
+    // XBT
+    // xbt %r0, %r1    // r0[0] <- r1[254]
+    ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
+    xbt % $wd:tt, % $ra:tt
+    $($rest:tt)* ) => {
+        asm_!({ $($attr)* } [ $($mcode,)* $wd << 18 | 0 << 11 | $ra << 6 | 0 << 17 | 0 << 12 | 0xC ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
+    };
+    ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
+    xbt % $wd:tt, # $ra:tt
+    $($rest:tt)* ) => {
+        asm_!({ $($attr)* } [ $($mcode,)* $wd << 18 | 1 << 11 | $ra << 6 | 0 << 17 | 0 << 12 | 0xC ], [ $($lbl => $lblval),* ], [ $($reloc),* ], $($rest)*)
+    };
+
     // UDF
     ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
         udf
@@ -527,6 +553,8 @@ fn all_opcodes() {
             trd %23, %14
             brz start, %15
             fin
+            shl %22, %16
+            xbt %21, %17
     );
     #[allow(clippy::eq_op)]
     #[allow(clippy::identity_op)]
@@ -545,6 +573,8 @@ fn all_opcodes() {
             0x000 << 23 | 23 << 18 |  0 << 11 |  14 << 6 |    0 << 17 |    0 << 12 |   0x8,
             0x3F6 << 23 |  0 << 18 |  0 << 11 |  15 << 6 |    0 << 17 |    0 << 12 |   0x9,
             0x000 << 23 |  0 << 18 |  0 << 11 |   0 << 6 |    0 << 17 |    0 << 12 |   0xA,
+            0x000 << 23 | 22 << 18 |  0 << 11 |  16 << 6 |    0 << 17 |    0 << 12 |   0xB,
+            0x000 << 23 | 21 << 18 |  0 << 11 |  17 << 6 |    0 << 17 |    0 << 12 |   0xC,
         ],
     );
 }

@@ -31,7 +31,7 @@ impl std::fmt::Display for Operand {
 pub enum Opcode {
     PSA(Operand, Operand),
     PSB(Operand, Operand),
-    MSK(Operand, Operand),
+    MSK(Operand, Operand, Operand),
     XOR,
     NOT,
     ADD(Operand, Operand, Operand),
@@ -40,6 +40,8 @@ pub enum Opcode {
     TRD,
     BRZ(Operand, i32),
     FIN,
+    SHL(Operand, Operand),
+    XBT(Operand, Operand),
     UDF,
 }
 
@@ -47,8 +49,8 @@ impl Opcode {
     pub fn from_i32(op: i32) -> Opcode {
         match op & (32 - 1) {
             0 => Opcode::PSA(Operand::from_i32_r(op >> 6), Operand::from_i32_w(op >> 18)),
-            1 => Opcode::PSB(Operand::from_i32_r(op >> 6), Operand::from_i32_w(op >> 18)),
-            2 => Opcode::MSK(Operand::from_i32_r(op >> 6), Operand::from_i32_r(op >> 12)),
+            1 => Opcode::PSB(Operand::from_i32_r(op >> 6), Operand::from_i32_w(op >> 12)),
+            2 => Opcode::MSK(Operand::from_i32_r(op >> 6), Operand::from_i32_r(op >> 12), Operand::from_i32_w(op >> 18)),
             3 => Opcode::XOR,
             4 => Opcode::NOT,
             5 => Opcode::ADD(
@@ -61,6 +63,8 @@ impl Opcode {
             8 => Opcode::TRD,
             9 => Opcode::BRZ(Operand::from_i32_r(op >> 6), op >> 23),
             10 => Opcode::FIN,
+            11 => Opcode::SHL(Operand::from_i32_r(op>>6), Operand::from_i32_w(op >> 18)),
+            12 => Opcode::XBT(Operand::from_i32_r(op>>6), Operand::from_i32_w(op >> 18)),
             _ => Opcode::UDF,
         }
     }
@@ -72,8 +76,8 @@ impl std::fmt::Display for Opcode {
         use Opcode::*;
         match self {
             PSA(ra, rd) => write!(f, "PSA {}, {}", ra, rd),
-            PSB(ra, rd) => write!(f, "PSB {}, {}", ra, rd),
-            MSK(ra, rb) => write!(f, "MSK {}, {}", ra, rb),
+            PSB(rb, rd) => write!(f, "PSB {}, {}", rb, rd),
+            MSK(ra, rb, rd) => write!(f, "MSK {}, {}, {}", rd, ra, rb),
             XOR => write!(f, "XOR"),
             NOT => write!(f, "NOT"),
             ADD(ra, rb, rd) => write!(f, "ADD {}, {}, {}", rd, ra, rb),
@@ -82,6 +86,8 @@ impl std::fmt::Display for Opcode {
             TRD => write!(f, "TRD"),
             BRZ(ra, rb) => write!(f, "BRZ {}, {}", rb, ra),
             FIN => write!(f, "FIN"),
+            SHL(ra, rd) => write!(f, "SHL {}, {}", ra, rd),
+            XBT(ra, rd) => write!(f, "XBT {}, {}", ra, rd),
             _ => write!(f, "invalid"),
         }
     }

@@ -12,3 +12,5 @@ std = []
 default = ["std"]
 
 [dependencies]
+
+[workspace]
