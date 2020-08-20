@@ -1,3 +1,5 @@
+#![no_std]  // comment this out for testing. Can't figure out how to get this to be optional based on Cargo.toml values...
+
 #![cfg_attr(feature = "macro-debug", feature(trace_macros))]
 #![cfg_attr(feature = "macro-debug", feature(log_syntax))]
 #[cfg(feature = "macro-debug")]
