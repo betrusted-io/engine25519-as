@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "none", no_std)]
+
 #![cfg_attr(feature = "macro-debug", feature(trace_macros))]
 #![cfg_attr(feature = "macro-debug", feature(log_syntax))]
 #[cfg(feature = "macro-debug")]
