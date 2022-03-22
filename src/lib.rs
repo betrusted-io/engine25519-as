@@ -182,11 +182,11 @@ macro_rules! reloc {
 
 #[macro_export]
 #[doc(hidden)]
-#[allow(unused_macros)]
 macro_rules! asm_ {
     ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
         // EOF
     ) => {{
+        #[allow(unused_macros)]
         ident_map!(labelmap = {
             $($lbl => $lblval),*
         });
