@@ -1,3 +1,4 @@
+#![allow(unused_macros)]
 #![cfg_attr(any(target_os = "none", target_os = "xous"), no_std)]
 
 #![cfg_attr(feature = "macro-debug", feature(trace_macros))]
