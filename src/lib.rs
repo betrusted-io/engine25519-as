@@ -1,3 +1,4 @@
+#![allow(unused_macros)]
 #![cfg_attr(any(target_os = "none", target_os = "xous"), no_std)]
 
 #![cfg_attr(feature = "macro-debug", feature(trace_macros))]
@@ -182,11 +183,14 @@ macro_rules! reloc {
 
 #[macro_export]
 #[doc(hidden)]
-#[allow(unused_macros)]
 macro_rules! asm_ {
     ( { $($attr:tt)* } [ $($mcode:expr),* ], [ $($lbl:ident => $lblval:expr),* ], [ $($reloc:tt),* ],
         // EOF
     ) => {{
+        ident_map!(labelmap = {
+            $($lbl => $lblval),*
+        });
+        reloc!({ $($attr)* } [], labelmap, [ $($mcode),* ], [ $($reloc),* ])
     }};
 
     // ==================================================================================
